@@ -60,7 +60,13 @@ export async function createDietPlan(req, res) {
       activity_level,
       workouts_per_week,
       workout_calories_per_session,
-      start_date
+      start_date,
+      // Valori manuali opzionali (se forniti, sovrascrivono il calcolo automatico)
+      calorie_target: manualCalories,
+      proteine_g: manualProteine,
+      carboidrati_g: manualCarboidrati,
+      grassi_g: manualGrassi,
+      strategia: manualStrategia
     } = req.body;
 
     // Fetch user per dati default
@@ -98,71 +104,95 @@ export async function createDietPlan(req, res) {
 
     let planData;
 
-    // METODO CUSTOM: se fornito workouts_per_week, calcola TDEE preciso
-    if (workouts_per_week !== undefined && workouts_per_week !== null) {
-      // Calcola TDEE con metodo custom (workout count o smartwatch calories)
-      const tdee = calculateTDEEWithCustomActivity(
-        latestMeasurement.bmr,
-        workouts_per_week,
-        workout_calories_per_session || null
-      );
-
-      // Calcola target calorie basato su obiettivo
-      const { targetCalorie, deficit, deficitPercent } = calculateTargetCalories(
-        tdee,
-        finalObiettivo,
-        finalObiettivo === 'ricomposizione' || finalObiettivo === 'mantenimento' ? null : finalIntensita,
-        latestMeasurement.bmr
-      );
-
-      // Distribuisci macros
-      const macros = calculateMacros(
-        targetCalorie,
-        latestMeasurement.peso,
-        latestMeasurement.massa_magra,
-        finalObiettivo
-      );
-
-      // Genera strategia descrittiva
-      let strategia = '';
-      if (finalObiettivo === 'cutting') {
-        strategia = `Deficit ${Math.abs(deficitPercent)}% (${Math.abs(deficit)} kcal/giorno). Focus: preservazione massa muscolare con proteine elevate (${macros.proteine}g/giorno).`;
-      } else if (finalObiettivo === 'bulking') {
-        strategia = `Surplus ${deficitPercent}% (+${Math.abs(deficit)} kcal/giorno). Focus: costruzione muscolare progressiva con volume allenamento adeguato.`;
-      } else if (finalObiettivo === 'ricomposizione') {
-        strategia = `Calorie a mantenimento (TDEE). Focus: perdita grasso e costruzione/mantenimento muscolo simultanei. Richiede allenamento intenso e proteine elevate.`;
-      } else {
-        strategia = `Calorie a mantenimento (TDEE). Focus: stabilità composizione corporea.`;
-      }
+    // 🔥 MODALITÀ MANUALE: Se forniti valori manuali, usali direttamente
+    if (manualCalories && manualProteine && manualCarboidrati && manualGrassi) {
+      // Calcola TDEE stimato reverse-engineered dalle calorie target
+      const estimatedTDEE = Math.round(latestMeasurement.bmr * 1.5); // Stima base per soddisfare il constraint
 
       planData = {
         bmr_base: latestMeasurement.bmr,
-        tdee_stimato: tdee,
-        calorie_target: targetCalorie,
-        deficit_surplus: -deficit,
-        deficit_percent: -deficitPercent,
-        proteine_g: macros.proteine,
-        carboidrati_g: macros.carboidrati,
-        grassi_g: macros.grassi,
+        tdee_stimato: estimatedTDEE,
+        calorie_target: manualCalories,
+        deficit_surplus: manualCalories - estimatedTDEE,
+        deficit_percent: Math.round(((manualCalories - estimatedTDEE) / estimatedTDEE) * 100 * 10) / 10,
+        proteine_g: manualProteine,
+        carboidrati_g: manualCarboidrati,
+        grassi_g: manualGrassi,
         obiettivo: finalObiettivo,
-        strategia,
-        workouts_per_week,
+        strategia: manualStrategia || 'Piano personalizzato con valori manuali',
+        workouts_per_week: workouts_per_week || null,
         workout_calories_per_session: workout_calories_per_session || null,
-        calorie_da_macros: (macros.proteine * 4) + (macros.carboidrati * 4) + (macros.grassi * 9)
+        calorie_da_macros: (manualProteine * 4) + (manualCarboidrati * 4) + (manualGrassi * 9)
       };
     } else {
-      // METODO STANDARD: usa activity_level
-      const finalActivityLevel = activity_level || user.activity_level;
+      // 🔥 MODALITÀ AUTOMATICA: Calcola valori da BMR e parametri
 
-      planData = generateCompleteDietPlan(
-        latestMeasurement.bmr,
-        latestMeasurement.peso,
-        latestMeasurement.massa_magra,
-        finalActivityLevel,
-        finalObiettivo,
-        finalIntensita
-      );
-    }
+      // METODO CUSTOM: se fornito workouts_per_week, calcola TDEE preciso
+      if (workouts_per_week !== undefined && workouts_per_week !== null) {
+        // Calcola TDEE con metodo custom (workout count o smartwatch calories)
+        const tdee = calculateTDEEWithCustomActivity(
+          latestMeasurement.bmr,
+          workouts_per_week,
+          workout_calories_per_session || null
+        );
+
+        // Calcola target calorie basato su obiettivo
+        const { targetCalorie, deficit, deficitPercent } = calculateTargetCalories(
+          tdee,
+          finalObiettivo,
+          finalObiettivo === 'ricomposizione' || finalObiettivo === 'mantenimento' ? null : finalIntensita,
+          latestMeasurement.bmr
+        );
+
+        // Distribuisci macros
+        const macros = calculateMacros(
+          targetCalorie,
+          latestMeasurement.peso,
+          latestMeasurement.massa_magra,
+          finalObiettivo
+        );
+
+        // Genera strategia descrittiva
+        let strategia = '';
+        if (finalObiettivo === 'cutting') {
+          strategia = `Deficit ${Math.abs(deficitPercent)}% (${Math.abs(deficit)} kcal/giorno). Focus: preservazione massa muscolare con proteine elevate (${macros.proteine}g/giorno).`;
+        } else if (finalObiettivo === 'bulking') {
+          strategia = `Surplus ${deficitPercent}% (+${Math.abs(deficit)} kcal/giorno). Focus: costruzione muscolare progressiva con volume allenamento adeguato.`;
+        } else if (finalObiettivo === 'ricomposizione') {
+          strategia = `Calorie a mantenimento (TDEE). Focus: perdita grasso e costruzione/mantenimento muscolo simultanei. Richiede allenamento intenso e proteine elevate.`;
+        } else {
+          strategia = `Calorie a mantenimento (TDEE). Focus: stabilità composizione corporea.`;
+        }
+
+        planData = {
+          bmr_base: latestMeasurement.bmr,
+          tdee_stimato: tdee,
+          calorie_target: targetCalorie,
+          deficit_surplus: -deficit,
+          deficit_percent: -deficitPercent,
+          proteine_g: macros.proteine,
+          carboidrati_g: macros.carboidrati,
+          grassi_g: macros.grassi,
+          obiettivo: finalObiettivo,
+          strategia,
+          workouts_per_week,
+          workout_calories_per_session: workout_calories_per_session || null,
+          calorie_da_macros: (macros.proteine * 4) + (macros.carboidrati * 4) + (macros.grassi * 9)
+        };
+      } else {
+        // METODO STANDARD: usa activity_level
+        const finalActivityLevel = activity_level || user.activity_level;
+
+        planData = generateCompleteDietPlan(
+          latestMeasurement.bmr,
+          latestMeasurement.peso,
+          latestMeasurement.massa_magra,
+          finalActivityLevel,
+          finalObiettivo,
+          finalIntensita
+        );
+      }
+    } // Fine modalità automatica
 
     // Disattiva vecchi piani
     await DietPlan.update(

@@ -88,7 +88,11 @@ export default function Home({ onNavigate }) {
 
       {/* Recommendation Panel */}
       <div className="mb-8">
-        <RecommendationPanel analysis={analysis} />
+        <RecommendationPanel
+          analysis={analysis}
+          currentPlan={dietPlan}
+          onPlanUpdated={loadData}
+        />
       </div>
 
       {/* Piano Dieta Corrente */}
