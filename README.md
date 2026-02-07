@@ -219,7 +219,7 @@ MIT License - vedi [LICENSE](LICENSE) per dettagli
 
 ## 👤 Author
 
-**Lorenzo**
+**Luca**
 
 ## 🙏 Acknowledgments
 
