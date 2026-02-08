@@ -19,3 +19,8 @@ export const getPlansHistory = async (type, limit = 10) => {
   const response = await api.get('/plans/history', { params: { type, limit } })
   return response.data
 }
+
+export const recalculateTDEE = async (userId = 1) => {
+  const response = await api.post('/plans/diet/recalculate-tdee', { user_id: userId })
+  return response.data
+}

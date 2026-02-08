@@ -3,6 +3,7 @@ import User from './User.js';
 import Measurement from './Measurement.js';
 import DietPlan from './DietPlan.js';
 import WorkoutPlan from './WorkoutPlan.js';
+import TDEEUpdateLog from './TDEEUpdateLog.js';
 
 /**
  * Setup associazioni tra models
@@ -38,13 +39,34 @@ WorkoutPlan.belongsTo(User, {
   as: 'user'
 });
 
+// DietPlan hasMany TDEEUpdateLogs
+DietPlan.hasMany(TDEEUpdateLog, {
+  foreignKey: 'diet_plan_id',
+  as: 'tdeeUpdateLogs'
+});
+TDEEUpdateLog.belongsTo(DietPlan, {
+  foreignKey: 'diet_plan_id',
+  as: 'dietPlan'
+});
+
+// User hasMany TDEEUpdateLogs
+User.hasMany(TDEEUpdateLog, {
+  foreignKey: 'user_id',
+  as: 'tdeeUpdateLogs'
+});
+TDEEUpdateLog.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user'
+});
+
 // Export models e sequelize
 export {
   sequelize,
   User,
   Measurement,
   DietPlan,
-  WorkoutPlan
+  WorkoutPlan,
+  TDEEUpdateLog
 };
 
 export default {
@@ -52,5 +74,6 @@ export default {
   User,
   Measurement,
   DietPlan,
-  WorkoutPlan
+  WorkoutPlan,
+  TDEEUpdateLog
 };

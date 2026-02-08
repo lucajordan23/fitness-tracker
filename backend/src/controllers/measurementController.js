@@ -1,7 +1,13 @@
-import { Measurement, User } from '../models/index.js';
+import { Measurement, User, DietPlan } from '../models/index.js';
 import { Op } from 'sequelize';
 import { average, round, percentChange } from '../utils/mathHelpers.js';
 import { daysAgo } from '../utils/dateHelpers.js';
+import {
+  calculateAdaptiveTDEE,
+  shouldUpdatePlan,
+  updatePlanWithAdaptiveTDEE,
+  logTDEEUpdate
+} from '../services/TDEEAdaptiveEstimator.js';
 
 /**
  * POST /api/measurements
@@ -59,9 +65,16 @@ export async function createMeasurement(req, res) {
       note
     });
 
+    // ⭐ HOOK: Se calorie presenti, check TDEE adattivo
+    let adaptiveUpdate = null;
+    if (calorie_consumate && calorie_consumate > 0) {
+      adaptiveUpdate = await tryUpdateAdaptiveTDEE(user_id || 1);
+    }
+
     res.status(201).json({
       success: true,
-      data: measurement
+      data: measurement,
+      adaptive_tdee_update: adaptiveUpdate
     });
   } catch (error) {
     console.error('Error creating measurement:', error);
@@ -263,6 +276,63 @@ export async function deleteMeasurement(req, res) {
       success: false,
       error: error.message
     });
+  }
+}
+
+/**
+ * Helper: Tenta aggiornamento TDEE adattivo (non blocca se fallisce)
+ */
+async function tryUpdateAdaptiveTDEE(userId) {
+  try {
+    const dietPlan = await DietPlan.findOne({
+      where: { user_id: userId, is_active: true },
+      order: [['start_date', 'DESC']]
+    });
+
+    if (!dietPlan) return null;
+
+    const adaptiveResult = await calculateAdaptiveTDEE(dietPlan, userId);
+
+    if (!adaptiveResult.canActivate) {
+      // Log tentativo fallito
+      await logTDEEUpdate(dietPlan, adaptiveResult, false, adaptiveResult.reason);
+
+      return {
+        updated: false,
+        reason: adaptiveResult.reason,
+        measurements_needed: adaptiveResult.required ? (adaptiveResult.required - adaptiveResult.current) : null
+      };
+    }
+
+    const needsUpdate = shouldUpdatePlan(dietPlan, adaptiveResult);
+
+    if (needsUpdate) {
+      const updateResult = await updatePlanWithAdaptiveTDEE(
+        dietPlan,
+        adaptiveResult
+      );
+
+      // Log aggiornamento riuscito
+      await logTDEEUpdate(dietPlan, adaptiveResult, true, null);
+
+      return {
+        updated: true,
+        changes: updateResult.changes,
+        message: 'Piano aggiornato automaticamente con TDEE adattivo'
+      };
+    }
+
+    // Log tentativo non aggiornato (cambio non significativo)
+    await logTDEEUpdate(dietPlan, adaptiveResult, false, 'change_not_significant');
+
+    return {
+      updated: false,
+      reason: 'no_significant_change',
+      current_tdee: adaptiveResult.tdeeAdaptive
+    };
+  } catch (error) {
+    console.error('tryUpdateAdaptiveTDEE failed:', error);
+    return null; // Non bloccare creazione misurazione
   }
 }
 

@@ -110,6 +110,38 @@ const DietPlan = sequelize.define('diet_plans', {
     allowNull: true
   },
 
+  // === TDEE ADATTIVO ===
+  tdee_adaptive_enabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    comment: 'Se true, il piano usa TDEE adattivo invece di stimato'
+  },
+  tdee_adaptive: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'TDEE calcolato con smoothing esponenziale dai dati reali'
+  },
+  tdee_adaptive_alpha: {
+    type: DataTypes.REAL,
+    defaultValue: 0.75,
+    comment: 'Coefficiente smoothing esponenziale (0.7-0.8)'
+  },
+  tdee_adaptive_last_update: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Timestamp ultimo aggiornamento TDEE adattivo'
+  },
+  tdee_adaptive_update_count: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    comment: 'Numero aggiornamenti TDEE adattivo applicati'
+  },
+  require_calorie_tracking: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true,
+    comment: 'Se true, calorie_consumate è obbligatorio nelle misurazioni'
+  },
+
   // === AUDIT ===
   created_by: {
     type: DataTypes.STRING,

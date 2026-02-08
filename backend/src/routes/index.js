@@ -2,6 +2,7 @@ import express from 'express';
 import measurementsRouter from './measurements.js';
 import plansRouter from './plans.js';
 import analysisRouter from './analysis.js';
+import caloriesRouter from './calories.js';
 
 const router = express.Router();
 
@@ -26,5 +27,8 @@ router.use('/plans', plansRouter);
 
 // Analysis endpoints
 router.use('/analysis', analysisRouter);
+
+// Calories tracking endpoints
+router.use('/calories', caloriesRouter);
 
 export default router;

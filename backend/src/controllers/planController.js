@@ -5,6 +5,12 @@ import {
   calculateTargetCalories,
   calculateMacros
 } from '../services/CalorieCalculator.js';
+import {
+  calculateAdaptiveTDEE,
+  shouldUpdatePlan,
+  updatePlanWithAdaptiveTDEE,
+  logTDEEUpdate
+} from '../services/TDEEAdaptiveEstimator.js';
 import { Op } from 'sequelize';
 
 /**
@@ -366,9 +372,112 @@ export async function getPlansHistory(req, res) {
   }
 }
 
+/**
+ * POST /api/plans/diet/recalculate-tdee
+ * Ricalcola TDEE adattivo e aggiorna piano se necessario
+ */
+export async function recalculateAdaptiveTDEE(req, res) {
+  try {
+    const { user_id = 1 } = req.body;
+
+    // Fetch piano dieta attivo
+    const dietPlan = await DietPlan.findOne({
+      where: { user_id, is_active: true },
+      order: [['start_date', 'DESC']]
+    });
+
+    if (!dietPlan) {
+      return res.status(404).json({
+        success: false,
+        error: 'Nessun piano dieta attivo trovato'
+      });
+    }
+
+    // Calcola TDEE adattivo
+    const adaptiveResult = await calculateAdaptiveTDEE(dietPlan, user_id);
+
+    if (!adaptiveResult.canActivate) {
+      // Log tentativo fallito
+      await logTDEEUpdate(dietPlan, adaptiveResult, false, adaptiveResult.reason);
+
+      return res.json({
+        success: false,
+        adaptive_active: false,
+        reason: adaptiveResult.reason,
+        message: getAdaptiveErrorMessage(adaptiveResult)
+      });
+    }
+
+    // Determina se serve aggiornare
+    const needsUpdate = shouldUpdatePlan(dietPlan, adaptiveResult);
+
+    if (!needsUpdate) {
+      // Log tentativo non aggiornato (cambio non significativo)
+      await logTDEEUpdate(dietPlan, adaptiveResult, false, 'change_not_significant');
+
+      return res.json({
+        success: true,
+        adaptive_active: true,
+        updated: false,
+        message: 'TDEE adattivo calcolato ma nessun aggiornamento necessario',
+        data: {
+          current_tdee: dietPlan.tdee_adaptive || dietPlan.tdee_stimato,
+          calculated_tdee: adaptiveResult.tdeeAdaptive,
+          change_percent: adaptiveResult.changePercent,
+          reason: 'change_not_significant'
+        }
+      });
+    }
+
+    // Aggiorna piano
+    const updateResult = await updatePlanWithAdaptiveTDEE(
+      dietPlan,
+      adaptiveResult
+    );
+
+    // Log aggiornamento riuscito
+    await logTDEEUpdate(dietPlan, adaptiveResult, true, null);
+
+    res.json({
+      success: true,
+      adaptive_active: true,
+      updated: true,
+      message: 'Piano aggiornato con TDEE adattivo',
+      data: {
+        ...updateResult.changes,
+        change_percent: adaptiveResult.changePercent,
+        update_count: dietPlan.tdee_adaptive_update_count + 1
+      }
+    });
+  } catch (error) {
+    console.error('Error recalculating adaptive TDEE:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Helper: Genera messaggio di errore per adaptive TDEE
+ */
+function getAdaptiveErrorMessage(result) {
+  switch (result.reason) {
+    case 'insufficient_data':
+      return `Servono almeno ${result.required} misurazioni con calorie tracciate. Attualmente: ${result.current}. Continua a tracciare calorie quotidianamente.`;
+    case 'delta_peso_insufficient':
+      return result.message || `Variazione di peso (${Math.abs(result.deltaPeso).toFixed(2)}kg) troppo piccola per essere significativa. Soglia minima: ${result.threshold}kg. Continua a tracciare per accumulare dati più rappresentativi.`;
+    case 'calculation_failed':
+      return 'Impossibile calcolare TDEE reale dai dati disponibili. Verifica che le misurazioni abbiano calorie_consumate compilato.';
+    default:
+      return 'Impossibile attivare TDEE adattivo';
+  }
+}
+
 export default {
   getCurrentPlans,
   createDietPlan,
   createWorkoutPlan,
-  getPlansHistory
+  getPlansHistory,
+  recalculateAdaptiveTDEE
 };

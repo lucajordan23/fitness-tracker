@@ -3,7 +3,8 @@ import {
   getCurrentPlans,
   createDietPlan,
   createWorkoutPlan,
-  getPlansHistory
+  getPlansHistory,
+  recalculateAdaptiveTDEE
 } from '../controllers/planController.js';
 
 const router = express.Router();
@@ -23,5 +24,8 @@ router.post('/diet', createDietPlan);
 
 // POST /api/plans/workout
 router.post('/workout', createWorkoutPlan);
+
+// POST /api/plans/diet/recalculate-tdee
+router.post('/diet/recalculate-tdee', recalculateAdaptiveTDEE);
 
 export default router;

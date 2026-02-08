@@ -3,6 +3,7 @@ import Home from './pages/Home'
 import Measurements from './pages/Measurements'
 import Plans from './pages/Plans'
 import NewMeasurement from './pages/NewMeasurement'
+import CalorieHistory from './pages/CalorieHistory'
 
 function App() {
   const [currentPage, setCurrentPage] = useState('home')
@@ -15,6 +16,8 @@ function App() {
         return <Measurements onNavigate={setCurrentPage} />
       case 'plans':
         return <Plans onNavigate={setCurrentPage} />
+      case 'calories':
+        return <CalorieHistory onNavigate={setCurrentPage} />
       case 'new-measurement':
         return <NewMeasurement onNavigate={setCurrentPage} />
       default:
@@ -48,6 +51,16 @@ function App() {
                 }`}
               >
                 📊 Misurazioni
+              </button>
+              <button
+                onClick={() => setCurrentPage('calories')}
+                className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                  currentPage === 'calories'
+                    ? 'border-blue-500 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                🍽️ Calorie
               </button>
               <button
                 onClick={() => setCurrentPage('plans')}

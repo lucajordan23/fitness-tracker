@@ -5,8 +5,9 @@ import { getTrendAnalysis } from '../services/analysisService'
 import StatCard from '../components/StatCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ErrorMessage from '../components/ErrorMessage'
-import TrendChart from '../components/TrendChart'
+import TrendChartsCarousel from '../components/TrendChartsCarousel'
 import RecommendationPanel from '../components/RecommendationPanel'
+import QuickCalorieEntry from '../components/QuickCalorieEntry'
 import { formatWeight, formatPercent, formatKcal } from '../utils/formatters'
 
 export default function Home({ onNavigate }) {
@@ -81,9 +82,9 @@ export default function Home({ onNavigate }) {
         />
       </div>
 
-      {/* Trend Chart */}
+      {/* Trend Charts Carousel */}
       <div className="mb-8">
-        <TrendChart measurements={measurements} days={30} />
+        <TrendChartsCarousel measurements={measurements} dietPlan={dietPlan} />
       </div>
 
       {/* Recommendation Panel */}
@@ -95,10 +96,55 @@ export default function Home({ onNavigate }) {
         />
       </div>
 
+      {/* Quick Calorie Entry */}
+      <div className="mb-8">
+        <QuickCalorieEntry dietPlan={dietPlan} />
+      </div>
+
       {/* Piano Dieta Corrente */}
       {dietPlan ? (
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">📋 Piano Dieta Attivo</h2>
+          <div className="flex justify-between items-start mb-4">
+            <h2 className="text-xl font-bold text-gray-900">📋 Piano Dieta Attivo</h2>
+            {dietPlan.tdee_adaptive_enabled && (
+              <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                🔥 TDEE Adattivo Attivo
+              </span>
+            )}
+          </div>
+
+          {/* SEZIONE TDEE ADATTIVO */}
+          <div className="md:col-span-2 bg-gray-50 p-4 rounded mb-4">
+            <p className="text-sm text-gray-500 mb-2">Metabolismo Giornaliero (TDEE)</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs text-gray-500">TDEE Stimato Iniziale</p>
+                <p className="text-lg font-semibold">{dietPlan.tdee_stimato} kcal</p>
+              </div>
+
+              {dietPlan.tdee_adaptive_enabled && dietPlan.tdee_adaptive && (
+                <div className="border-l-2 border-green-400 pl-4">
+                  <p className="text-xs text-green-600 font-medium">TDEE Adattivo (Dai Dati Reali)</p>
+                  <p className="text-lg font-semibold text-green-700">
+                    {dietPlan.tdee_adaptive} kcal
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {((dietPlan.tdee_adaptive - dietPlan.tdee_stimato) / dietPlan.tdee_stimato * 100).toFixed(1)}%
+                    {dietPlan.tdee_adaptive > dietPlan.tdee_stimato ? ' sopra' : ' sotto'} stima iniziale
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {!dietPlan.tdee_adaptive_enabled && (
+              <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded p-3">
+                <p className="text-xs text-yellow-800">
+                  ⚠️ TDEE adattivo non ancora attivo. Traccia calorie consumate per almeno 10-14 giorni.
+                </p>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <p className="text-sm text-gray-500">Obiettivo</p>

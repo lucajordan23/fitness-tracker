@@ -40,11 +40,12 @@ export async function testConnection() {
 /**
  * Sincronizza models con database
  * @param {boolean} force - Se true, droppa e ricrea tutte le tabelle (ATTENZIONE: cancella dati!)
+ * @param {boolean} alter - Se true, modifica tabelle esistenti aggiungendo nuove colonne
  */
-export async function syncDatabase(force = false) {
+export async function syncDatabase(force = false, alter = false) {
   try {
-    await sequelize.sync({ force });
-    console.log(`✅ Database synchronized${force ? ' (tables recreated)' : ''}.`);
+    await sequelize.sync({ force, alter });
+    console.log(`✅ Database synchronized${force ? ' (tables recreated)' : alter ? ' (tables altered)' : ''}.`);
     return true;
   } catch (error) {
     console.error('❌ Error synchronizing database:', error);

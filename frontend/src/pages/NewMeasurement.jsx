@@ -7,6 +7,7 @@ export default function NewMeasurement({ onNavigate }) {
     body_fat_percent: '',
     massa_magra: '',
     bmr: '',
+    calorie_consumate: '', // ⭐ NUOVO: tracking calorie obbligatorio
     grasso_viscerale: '',
     note: ''
   })
@@ -18,15 +19,25 @@ export default function NewMeasurement({ onNavigate }) {
     try {
       setLoading(true)
       setError(null)
-      await createMeasurement({
+
+      const response = await createMeasurement({
         ...formData,
         peso: parseFloat(formData.peso),
         body_fat_percent: parseFloat(formData.body_fat_percent),
         massa_magra: parseFloat(formData.massa_magra),
         bmr: parseInt(formData.bmr),
+        calorie_consumate: parseInt(formData.calorie_consumate),
         grasso_viscerale: formData.grasso_viscerale ? parseInt(formData.grasso_viscerale) : null
       })
-      alert('✅ Misurazione salvata con successo!')
+
+      // ⭐ Check se TDEE adattivo è stato aggiornato automaticamente
+      if (response.adaptive_tdee_update?.updated) {
+        const changes = response.adaptive_tdee_update.changes
+        alert(`✅ Misurazione salvata!\n\n🔥 Piano aggiornato automaticamente:\n- TDEE: ${changes.tdee_old} → ${changes.tdee_new} kcal\n- Calorie target: ${changes.calories_old} → ${changes.calories_new} kcal`)
+      } else {
+        alert('✅ Misurazione salvata con successo!')
+      }
+
       onNavigate('home')
     } catch (err) {
       setError(err.message)
@@ -94,6 +105,22 @@ export default function NewMeasurement({ onNavigate }) {
                 onChange={(e) => setFormData({ ...formData, bmr: e.target.value })}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Calorie Consumate (kcal) * ⭐
+              </label>
+              <input
+                type="number"
+                required
+                value={formData.calorie_consumate}
+                onChange={(e) => setFormData({ ...formData, calorie_consumate: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                placeholder="es: 2400"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                📊 Obbligatorio per calcolo TDEE adattivo
+              </p>
             </div>
           </div>
         </div>

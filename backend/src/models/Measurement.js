@@ -91,7 +91,7 @@ const Measurement = sequelize.define('measurements', {
   calorie_consumate: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: 'Calorie effettivamente mangiate (se tracciate)'
+    comment: 'Calorie totali giornaliere (se tracciate)'
   },
   proteine_consumate: {
     type: DataTypes.INTEGER,
@@ -104,6 +104,28 @@ const Measurement = sequelize.define('measurements', {
   grassi_consumati: {
     type: DataTypes.INTEGER,
     allowNull: true
+  },
+
+  // === DETTAGLIO PASTI ===
+  colazione_kcal: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Calorie colazione'
+  },
+  pranzo_kcal: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Calorie pranzo'
+  },
+  cena_kcal: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Calorie cena'
+  },
+  spuntini_kcal: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Calorie spuntini (somma tutti gli spuntini)'
   },
 
   // === DATI SOGGETTIVI ===
