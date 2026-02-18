@@ -2,15 +2,12 @@ import { useState } from 'react'
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   Legend,
-  ResponsiveContainer,
-  ReferenceLine
+  ResponsiveContainer
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
 
@@ -26,24 +23,21 @@ export default function TrendChartsCarousel({ measurements, dietPlan }) {
     }))
     .reverse()
 
-  const calorieData = measurements
-    .filter(m => m.calorie_consumate)
+  const leanMassData = measurements
+    .filter(m => m.massa_magra)
     .map(m => ({
       date: format(parseISO(m.data_misurazione), 'dd/MM'),
-      consumate: m.calorie_consumate,
-      target: dietPlan?.calorie_target || 0,
-      delta: m.calorie_consumate - (dietPlan?.calorie_target || 0),
+      massaMagra: m.massa_magra,
       fullDate: m.data_misurazione
     }))
     .reverse()
 
-  const macroData = measurements
-    .filter(m => m.proteine_consumate || m.carboidrati_consumati || m.grassi_consumati)
+  const fatMassData = measurements
+    .filter(m => m.massa_grassa)
     .map(m => ({
       date: format(parseISO(m.data_misurazione), 'dd/MM'),
-      proteine: m.proteine_consumate || 0,
-      carboidrati: m.carboidrati_consumati || 0,
-      grassi: m.grassi_consumati || 0,
+      massaGrassa: m.massa_grassa,
+      bodyFat: m.body_fat_percent,
       fullDate: m.data_misurazione
     }))
     .reverse()
@@ -85,19 +79,20 @@ export default function TrendChartsCarousel({ measurements, dietPlan }) {
               strokeWidth={3}
               dot={{ fill: '#3b82f6', r: 4 }}
               activeDot={{ r: 6 }}
+              name="Peso"
             />
           </LineChart>
         </ResponsiveContainer>
       )
     },
     {
-      id: 'calories',
-      title: '🔥 Trend Calorie',
-      description: 'Calorie consumate vs target',
-      hasData: calorieData.length > 0,
+      id: 'lean-mass',
+      title: '💪 Trend Massa Magra',
+      description: 'Evoluzione massa magra (FFM)',
+      hasData: leanMassData.length > 0,
       component: (
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={calorieData}>
+          <LineChart data={leanMassData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis
               dataKey="date"
@@ -105,9 +100,61 @@ export default function TrendChartsCarousel({ measurements, dietPlan }) {
               stroke="#6b7280"
             />
             <YAxis
+              domain={['dataMin - 1', 'dataMax + 1']}
               tick={{ fontSize: 12 }}
               stroke="#6b7280"
-              label={{ value: 'kcal', angle: -90, position: 'insideLeft' }}
+              label={{ value: 'kg', angle: -90, position: 'insideLeft' }}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: '#fff',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                padding: '8px'
+              }}
+              formatter={(value) => [`${value} kg`, 'Massa Magra']}
+            />
+            <Line
+              type="monotone"
+              dataKey="massaMagra"
+              stroke="#10b981"
+              strokeWidth={3}
+              dot={{ fill: '#10b981', r: 4 }}
+              activeDot={{ r: 6 }}
+              name="Massa Magra"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )
+    },
+    {
+      id: 'fat-mass',
+      title: '📉 Trend Massa Grassa',
+      description: 'Evoluzione massa grassa e body fat %',
+      hasData: fatMassData.length > 0,
+      component: (
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={fatMassData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12 }}
+              stroke="#6b7280"
+            />
+            <YAxis
+              yAxisId="left"
+              domain={['dataMin - 0.5', 'dataMax + 0.5']}
+              tick={{ fontSize: 12 }}
+              stroke="#6b7280"
+              label={{ value: 'kg', angle: -90, position: 'insideLeft' }}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              domain={['dataMin - 1', 'dataMax + 1']}
+              tick={{ fontSize: 12 }}
+              stroke="#6b7280"
+              label={{ value: '%', angle: 90, position: 'insideRight' }}
             />
             <Tooltip
               contentStyle={{
@@ -117,72 +164,33 @@ export default function TrendChartsCarousel({ measurements, dietPlan }) {
                 padding: '8px'
               }}
               formatter={(value, name) => {
-                if (name === 'consumate') return [`${value} kcal`, 'Consumate']
-                if (name === 'target') return [`${value} kcal`, 'Target']
+                if (name === 'massaGrassa') return [`${value} kg`, 'Massa Grassa']
+                if (name === 'bodyFat') return [`${value}%`, 'Body Fat %']
                 return [value, name]
               }}
             />
             <Legend />
-            {dietPlan?.calorie_target && (
-              <ReferenceLine
-                y={dietPlan.calorie_target}
-                stroke="#10b981"
-                strokeDasharray="5 5"
-                label={{ value: 'Target', position: 'right', fill: '#10b981' }}
-              />
-            )}
             <Line
+              yAxisId="left"
               type="monotone"
-              dataKey="consumate"
-              stroke="#f59e0b"
+              dataKey="massaGrassa"
+              stroke="#ef4444"
               strokeWidth={3}
-              dot={{ fill: '#f59e0b', r: 4 }}
-              name="Consumate"
+              dot={{ fill: '#ef4444', r: 4 }}
+              activeDot={{ r: 6 }}
+              name="Massa Grassa (kg)"
+            />
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="bodyFat"
+              stroke="#f97316"
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              dot={{ fill: '#f97316', r: 3 }}
+              name="Body Fat %"
             />
           </LineChart>
-        </ResponsiveContainer>
-      )
-    },
-    {
-      id: 'macros',
-      title: '🍽️ Trend Macronutrienti',
-      description: 'Distribuzione proteine, carboidrati, grassi',
-      hasData: macroData.length > 0,
-      component: (
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={macroData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis
-              dataKey="date"
-              tick={{ fontSize: 12 }}
-              stroke="#6b7280"
-            />
-            <YAxis
-              tick={{ fontSize: 12 }}
-              stroke="#6b7280"
-              label={{ value: 'grammi', angle: -90, position: 'insideLeft' }}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: '#fff',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                padding: '8px'
-              }}
-              formatter={(value, name) => {
-                const labels = {
-                  proteine: 'Proteine',
-                  carboidrati: 'Carboidrati',
-                  grassi: 'Grassi'
-                }
-                return [`${value}g`, labels[name] || name]
-              }}
-            />
-            <Legend />
-            <Bar dataKey="proteine" fill="#3b82f6" name="Proteine" />
-            <Bar dataKey="carboidrati" fill="#10b981" name="Carboidrati" />
-            <Bar dataKey="grassi" fill="#f59e0b" name="Grassi" />
-          </BarChart>
         </ResponsiveContainer>
       )
     }
@@ -227,7 +235,7 @@ export default function TrendChartsCarousel({ measurements, dietPlan }) {
             <p className="text-gray-500 text-lg mb-2">📊</p>
             <p className="text-gray-600 font-medium">Dati insufficienti</p>
             <p className="text-gray-500 text-sm">
-              Inizia a tracciare {activeChart.id === 'weight' ? 'il peso' : activeChart.id === 'calories' ? 'le calorie' : 'i macronutrienti'}
+              Inizia a tracciare {activeChart.id === 'weight' ? 'il peso' : activeChart.id === 'lean-mass' ? 'la massa magra' : 'la massa grassa'}
             </p>
           </div>
         </div>
@@ -301,49 +309,63 @@ export default function TrendChartsCarousel({ measurements, dietPlan }) {
             </>
           )}
 
-          {activeChart.id === 'calories' && calorieData.length > 0 && (
+          {activeChart.id === 'lean-mass' && leanMassData.length > 0 && (
             <>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Media Giornaliera</p>
-                <p className="text-lg font-bold text-gray-900">
-                  {Math.round(calorieData.reduce((sum, d) => sum + d.consumate, 0) / calorieData.length)} kcal
+                <p className="text-xs text-gray-500">Massa Magra Attuale</p>
+                <p className="text-lg font-bold text-green-700">
+                  {leanMassData[leanMassData.length - 1]?.massaMagra.toFixed(1)} kg
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Target</p>
-                <p className="text-lg font-bold text-green-600">
-                  {dietPlan?.calorie_target || '-'} kcal
+                <p className="text-xs text-gray-500">Variazione 7gg</p>
+                <p className={`text-lg font-bold ${
+                  leanMassData.length >= 7 &&
+                  leanMassData[leanMassData.length - 1]?.massaMagra > leanMassData[leanMassData.length - 7]?.massaMagra
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}>
+                  {leanMassData.length >= 7
+                    ? (leanMassData[leanMassData.length - 1]?.massaMagra - leanMassData[leanMassData.length - 7]?.massaMagra).toFixed(1)
+                    : '-'} kg
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Aderenza 7gg</p>
-                <p className="text-lg font-bold text-blue-600">
-                  {calorieData.length >= 7 && dietPlan?.calorie_target
-                    ? Math.round((calorieData.slice(-7).reduce((sum, d) => sum + d.consumate, 0) / 7 / dietPlan.calorie_target) * 100)
-                    : '-'}%
+                <p className="text-xs text-gray-500">Media 7gg</p>
+                <p className="text-lg font-bold text-green-700">
+                  {leanMassData.length >= 7
+                    ? (leanMassData.slice(-7).reduce((sum, d) => sum + d.massaMagra, 0) / 7).toFixed(1)
+                    : leanMassData[leanMassData.length - 1]?.massaMagra.toFixed(1) || '-'} kg
                 </p>
               </div>
             </>
           )}
 
-          {activeChart.id === 'macros' && macroData.length > 0 && (
+          {activeChart.id === 'fat-mass' && fatMassData.length > 0 && (
             <>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Media Proteine</p>
-                <p className="text-lg font-bold text-blue-600">
-                  {Math.round(macroData.reduce((sum, d) => sum + d.proteine, 0) / macroData.length)}g
+                <p className="text-xs text-gray-500">Massa Grassa Attuale</p>
+                <p className="text-lg font-bold text-red-600">
+                  {fatMassData[fatMassData.length - 1]?.massaGrassa.toFixed(1)} kg
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Media Carboidrati</p>
-                <p className="text-lg font-bold text-green-600">
-                  {Math.round(macroData.reduce((sum, d) => sum + d.carboidrati, 0) / macroData.length)}g
+                <p className="text-xs text-gray-500">Body Fat Attuale</p>
+                <p className="text-lg font-bold text-orange-600">
+                  {fatMassData[fatMassData.length - 1]?.bodyFat.toFixed(1)}%
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-gray-500">Media Grassi</p>
-                <p className="text-lg font-bold text-yellow-600">
-                  {Math.round(macroData.reduce((sum, d) => sum + d.grassi, 0) / macroData.length)}g
+                <p className="text-xs text-gray-500">Variazione 7gg</p>
+                <p className={`text-lg font-bold ${
+                  fatMassData.length >= 7 &&
+                  fatMassData[fatMassData.length - 1]?.massaGrassa < fatMassData[fatMassData.length - 7]?.massaGrassa
+                    ? 'text-green-600'
+                    : 'text-red-600'
+                }`}>
+                  {fatMassData.length >= 7
+                    ? (fatMassData[fatMassData.length - 1]?.massaGrassa - fatMassData[fatMassData.length - 7]?.massaGrassa).toFixed(1)
+                    : '-'} kg
                 </p>
               </div>
             </>

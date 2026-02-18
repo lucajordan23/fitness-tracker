@@ -229,8 +229,113 @@ export async function getTodayCalories(req, res) {
   }
 }
 
+/**
+ * GET /api/calories/smart-average
+ * Calcola media intelligente ultimi 7 giorni escludendo outliers (cheat days)
+ * Usa metodo IQR (Interquartile Range) per rilevare outliers
+ */
+export async function getSmartAverage(req, res) {
+  try {
+    const { user_id = 1, days = 7 } = req.query;
+
+    const dateFrom = new Date();
+    dateFrom.setDate(dateFrom.getDate() - parseInt(days));
+
+    const measurements = await Measurement.findAll({
+      where: {
+        user_id,
+        data_misurazione: { [Op.gte]: dateFrom },
+        [Op.or]: [
+          { colazione_kcal: { [Op.gt]: 0 } },
+          { pranzo_kcal: { [Op.gt]: 0 } },
+          { cena_kcal: { [Op.gt]: 0 } }
+        ]
+      },
+      attributes: ['colazione_kcal', 'pranzo_kcal', 'cena_kcal', 'spuntini_kcal'],
+      order: [['data_misurazione', 'DESC']]
+    });
+
+    if (measurements.length === 0) {
+      return res.json({
+        success: true,
+        data: { colazione: 0, pranzo: 0, cena: 0, spuntini: 0 },
+        message: 'Dati insufficienti'
+      });
+    }
+
+    // Helper: rimuove outliers usando metodo IQR
+    const removeOutliers = (values) => {
+      if (values.length < 4) return values; // Troppo pochi dati per outlier detection
+
+      const sorted = [...values].sort((a, b) => a - b);
+      const q1Index = Math.floor(sorted.length * 0.25);
+      const q3Index = Math.floor(sorted.length * 0.75);
+      const q1 = sorted[q1Index];
+      const q3 = sorted[q3Index];
+      const iqr = q3 - q1;
+      const lowerBound = q1 - 1.5 * iqr;
+      const upperBound = q3 + 1.5 * iqr;
+
+      return values.filter(v => v >= lowerBound && v <= upperBound);
+    };
+
+    // Raccogli valori per ogni pasto
+    const colazioni = measurements.map(m => m.colazione_kcal || 0).filter(v => v > 0);
+    const pranzi = measurements.map(m => m.pranzo_kcal || 0).filter(v => v > 0);
+    const cene = measurements.map(m => m.cena_kcal || 0).filter(v => v > 0);
+    const spuntini = measurements.map(m => m.spuntini_kcal || 0).filter(v => v > 0);
+
+    // Rimuovi outliers
+    const colazioniClean = removeOutliers(colazioni);
+    const pranziClean = removeOutliers(pranzi);
+    const ceneClean = removeOutliers(cene);
+    const spuntiniClean = removeOutliers(spuntini);
+
+    // Calcola medie
+    const avgColazione = colazioniClean.length > 0
+      ? Math.round(colazioniClean.reduce((a, b) => a + b, 0) / colazioniClean.length)
+      : 0;
+    const avgPranzo = pranziClean.length > 0
+      ? Math.round(pranziClean.reduce((a, b) => a + b, 0) / pranziClean.length)
+      : 0;
+    const avgCena = ceneClean.length > 0
+      ? Math.round(ceneClean.reduce((a, b) => a + b, 0) / ceneClean.length)
+      : 0;
+    const avgSpuntini = spuntiniClean.length > 0
+      ? Math.round(spuntiniClean.reduce((a, b) => a + b, 0) / spuntiniClean.length)
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        colazione: avgColazione,
+        pranzo: avgPranzo,
+        cena: avgCena,
+        spuntini: avgSpuntini
+      },
+      metadata: {
+        days_analyzed: days,
+        measurements_count: measurements.length,
+        outliers_removed: {
+          colazione: colazioni.length - colazioniClean.length,
+          pranzo: pranzi.length - pranziClean.length,
+          cena: cene.length - ceneClean.length,
+          spuntini: spuntini.length - spuntiniClean.length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error calculating smart average:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}
+
 export default {
   getCalorieHistory,
   updateDailyCalories,
-  getTodayCalories
+  getTodayCalories,
+  getSmartAverage
 };

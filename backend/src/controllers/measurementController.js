@@ -7,7 +7,7 @@ import {
   shouldUpdatePlan,
   updatePlanWithAdaptiveTDEE,
   logTDEEUpdate
-} from '../services/TDEEAdaptiveEstimator.js';
+} from '../services/TDEEAdaptiveEstimatorKalman.js';
 
 /**
  * POST /api/measurements

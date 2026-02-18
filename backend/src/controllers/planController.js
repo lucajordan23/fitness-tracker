@@ -10,7 +10,7 @@ import {
   shouldUpdatePlan,
   updatePlanWithAdaptiveTDEE,
   logTDEEUpdate
-} from '../services/TDEEAdaptiveEstimator.js';
+} from '../services/TDEEAdaptiveEstimatorKalman.js';
 import { Op } from 'sequelize';
 
 /**

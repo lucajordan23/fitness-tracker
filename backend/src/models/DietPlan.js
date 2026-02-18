@@ -142,6 +142,28 @@ const DietPlan = sequelize.define('diet_plans', {
     comment: 'Se true, calorie_consumate è obbligatorio nelle misurazioni'
   },
 
+  // === KALMAN FILTER (Sostituisce exponential smoothing) ===
+  kalman_variance: {
+    type: DataTypes.REAL,
+    allowNull: true,
+    comment: 'Varianza stima Kalman (P[k]), indica incertezza TDEE'
+  },
+  kalman_gain: {
+    type: DataTypes.REAL,
+    allowNull: true,
+    comment: 'Ultimo Kalman Gain (K), diagnostico convergenza (0-1)'
+  },
+  kalman_confidence_lower: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Limite inferiore confidence interval 95% (kcal)'
+  },
+  kalman_confidence_upper: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Limite superiore confidence interval 95% (kcal)'
+  },
+
   // === AUDIT ===
   created_by: {
     type: DataTypes.STRING,

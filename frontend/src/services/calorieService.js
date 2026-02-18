@@ -28,3 +28,14 @@ export const updateDailyCalories = async (data) => {
   const response = await api.post('/calories/daily', data)
   return response.data
 }
+
+/**
+ * GET /api/calories/smart-average
+ * Calcola media intelligente ultimi 7gg (esclude outliers)
+ */
+export const getSmartAverage = async (days = 7) => {
+  const response = await api.get('/calories/smart-average', {
+    params: { days }
+  })
+  return response.data
+}

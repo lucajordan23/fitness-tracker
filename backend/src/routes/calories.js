@@ -2,7 +2,8 @@ import express from 'express';
 import {
   getCalorieHistory,
   updateDailyCalories,
-  getTodayCalories
+  getTodayCalories,
+  getSmartAverage
 } from '../controllers/calorieController.js';
 
 const router = express.Router();
@@ -16,6 +17,9 @@ router.get('/history', getCalorieHistory);
 
 // GET /api/calories/today
 router.get('/today', getTodayCalories);
+
+// GET /api/calories/smart-average
+router.get('/smart-average', getSmartAverage);
 
 // POST /api/calories/daily
 router.post('/daily', updateDailyCalories);
